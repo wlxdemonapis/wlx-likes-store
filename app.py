@@ -64,7 +64,7 @@ async def send_request(encrypted_uid, token, url):
             'Expect': "100-continue",
             'X-Unity-Version': "2018.4.11f1",
             'X-GA': "v1 1",
-            'ReleaseVersion': "OB47"
+            'ReleaseVersion': "OB48"
         }
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=edata, headers=headers) as response:
@@ -136,7 +136,7 @@ def make_request(encrypt, server_name, token):
             'Expect': "100-continue",
             'X-Unity-Version': "2018.4.11f1",
             'X-GA': "v1 1",
-            'ReleaseVersion': "OB47"
+            'ReleaseVersion': "OB48"
         }
         response = requests.post(url, data=edata, headers=headers, verify=False)
         hex_data = response.content.hex()
@@ -221,8 +221,8 @@ def handle_requests():
             status = 1 if like_given != 0 else 2
             result = {
                 "LikesGivenByAPI": like_given,
-                "LikesafterCommand": after_like,
                 "LikesbeforeCommand": before_like,
+                "LikesafterCommand": after_like,
                 "PlayerNickname": player_name,
                 "UID": player_uid,
                 "status": status
