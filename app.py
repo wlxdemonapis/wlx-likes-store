@@ -89,18 +89,18 @@ async def send_multiple_requests(uid, server_name, url):
         if protobuf_message is None:
             app.logger.error("Failed to create protobuf message.")
             return None
-
         encrypted_uid = encrypt_message(protobuf_message)
         if encrypted_uid is None:
             app.logger.error("Encryption failed.")
             return None
-
+        tasks = []
         tokens = load_tokens(server_name)
-        if not tokens:
+        if tokens is None:
             app.logger.error("Failed to load tokens.")
             return None
-
-        tasks = [send_request(encrypted_uid, token["token"], url) for token in tokens]  # Har token ke liye ek request
+        for i in range(1000):
+            token = tokens[i % len(tokens)]["token"]
+            tasks.append(send_request(encrypted_uid, token, url))
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
     except Exception as e:
