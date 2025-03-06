@@ -87,21 +87,45 @@ async def send_multiple_requests(uid, server_name, url):
         region = server_name
         protobuf_message = create_protobuf_message(uid, region)
         if protobuf_message is None:
-            app.logger.error("Failed to create protobuf message.")
             return None
         encrypted_uid = encrypt_message(protobuf_message)
         if encrypted_uid is None:
-            app.logger.error("Encryption failed.")
             return None
-        tasks = []
+
         tokens = load_tokens(server_name)
-        if tokens is None:
-            app.logger.error("Failed to load tokens.")
+        if not tokens:  # Check if tokens are empty
+            app.logger.error(f"No tokens available for server {server_name}")
             return None
-        for i in range(800):
-            token = tokens[i % len(tokens)]["token"]
-            tasks.append(send_request(encrypted_uid, token, url))
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        total_tokens = len(tokens)
+        batch_size = 100  
+        requests_per_batch = min(30, total_tokens)  # Ensure we don’t exceed available tokens
+
+        batch_start = 0  
+        results = []
+
+        while batch_start < total_tokens:
+            batch_end = min(batch_start + batch_size, total_tokens)
+            current_batch_tokens = tokens[batch_start:batch_end]
+
+            tasks = []
+            for i in range(requests_per_batch):
+                token = current_batch_tokens[i % len(current_batch_tokens)]["token"]
+                tasks.append(send_request(encrypted_uid, token, url))
+
+            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Retry failed requests
+            for index, result in enumerate(batch_results):
+                if isinstance(result, Exception) or result is None:
+                    retry_token = current_batch_tokens[index % len(current_batch_tokens)]["token"]
+                    app.logger.warning(f"Retrying failed request with token {retry_token}")
+                    retry_result = await send_request(encrypted_uid, retry_token, url)
+                    batch_results[index] = retry_result
+
+            results.extend(batch_results)
+            batch_start += batch_size
+
         return results
     except Exception as e:
         app.logger.error(f"Exception in send_multiple_requests: {e}")
