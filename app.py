@@ -93,36 +93,15 @@ async def send_multiple_requests(uid, server_name, url):
         if encrypted_uid is None:
             app.logger.error("Encryption failed.")
             return None
-
+        tasks = []
         tokens = load_tokens(server_name)
         if tokens is None:
             app.logger.error("Failed to load tokens.")
             return None
-
-        total_tokens = len(tokens)
-        batch_size = 100  # Har batch me 100 tokens honge
-        requests_per_batch = 30  # Har batch se 30 requests bhejenge
-
-        batch_start = 0  # Pehla batch (1-100) start hoga
-        results = []
-
-        while batch_start < total_tokens:
-            batch_end = min(batch_start + batch_size, total_tokens)  # Ensure range is within token limit
-            current_batch_tokens = tokens[batch_start:batch_end]
-
-            tasks = []  # Har batch ke liye naya task list
-            for i in range(requests_per_batch):
-                token_index = i % len(current_batch_tokens)  # Circular rotation within batch
-                token = current_batch_tokens[token_index]["token"]
-                tasks.append(send_request(encrypted_uid, token, url))
-
-            # 30 requests bhejne ke baad wait karo
-            batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-            results.extend(batch_results)
-
-            # Next batch pe switch karo
-            batch_start += batch_size
-
+        for i in range(800):
+            token = tokens[i % len(tokens)]["token"]
+            tasks.append(send_request(encrypted_uid, token, url))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
         return results
     except Exception as e:
         app.logger.error(f"Exception in send_multiple_requests: {e}")
